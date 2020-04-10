@@ -2,13 +2,7 @@ import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import javax.swing.BorderFactory;
 import javax.swing.GroupLayout;
 import javax.swing.JButton;
@@ -21,7 +15,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
-public class MainFrame extends JFrame
+public class MainFrame extends JFrame implements MessageListener
 {
     private static final String FRAME_TITLE = "Клиент мгновернных сообщений";
 
@@ -38,13 +32,15 @@ public class MainFrame extends JFrame
     private static final int MEDIUM_GAP = 10;
     private static final int LARGE_GAP = 15;
 
-    private static final int SERVER_PORT = 4567;
-
     private final JTextField textFieldFrom;
     private final JTextField textFieldTo;
 
     private final JTextArea textAreaIncoming;
     private final JTextArea textAreaOutgoing;
+
+    //сервер порт перенесен в instantMessenger
+    //экземпляр мессенджера
+    InstantMessenger myMessenger;
 
     //КОНСТРУКТОР
     public MainFrame()
@@ -75,6 +71,11 @@ public class MainFrame extends JFrame
         //Контейнер, обеспечивающий прокрутку текстовой области
         final JScrollPane scrollPaneOutgoing = new JScrollPane(textAreaOutgoing);
 
+
+        //СДЕЛАТЬ ЧТО-НИБУДЬ С СЕНДЕРОМ Х1 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        //СОЗДАНИЕ МЕССЕНДЖЕРА
+        myMessenger = new InstantMessenger(this);
+
         //Панель ввода сообщения
         final JPanel messagePanel = new JPanel();
         messagePanel.setBorder(
@@ -84,7 +85,22 @@ public class MainFrame extends JFrame
         final JButton sendButton = new JButton("Отправить");
         sendButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                sendMessage();
+                //Получаем необходимые параметры
+                final String senderName = textFieldFrom.getText();
+                final String destinationAddress = textFieldTo.getText();
+                final String message = textAreaOutgoing.getText();
+                //Передаем дело отправки мессенджеру
+                try {
+                    myMessenger.sendMessage(senderName, destinationAddress, message, MainFrame.this);
+                } catch (IOException e2) {
+                    e2.printStackTrace();
+                    JOptionPane.showMessageDialog(MainFrame.this, "Не удалось отправить сообщение", "Ошибка",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+                //Пишем в текстовую область вывода, что отправили свое сообщение
+                textAreaIncoming.append("Я -> " + destinationAddress + ": " + message + "\n");
+                //Очищаем текстовую область ввода
+                textAreaOutgoing.setText("");
             }
         });
 
@@ -135,97 +151,8 @@ public class MainFrame extends JFrame
                 .addComponent(messagePanel)
                 .addContainerGap());
 
-        //Создание и запуск потока-отработчика запросов
-        new Thread(new Runnable(){
-            public void run ()
-            {
-                try{
-                    final ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
-
-                    while(!Thread.interrupted())
-                    {
-                        final Socket socket = serverSocket.accept();
-                        final DataInputStream in = new DataInputStream(socket.getInputStream());
-                        //Читаем имя отправителя
-                        final String senderName = in.readUTF();
-                        //Читаем сообщение
-                        final String message = in.readUTF();
-                        //Закрываем соединение
-                        socket.close();
-                        //Выделяем IP-адрес
-                        final String address = ((InetSocketAddress) socket.getRemoteSocketAddress()).getAddress().getHostAddress();
-                        //Выводим сообщение в текстовую область
-                        textAreaIncoming.append(senderName + " (" + address + ") " + message + "\n");
-
-                    }
-                } catch (IOException e)
-                {
-                    e.printStackTrace();
-                    JOptionPane.showMessageDialog(MainFrame.this, "Ошибка в работе сервера", "Ошибка",
-                            JOptionPane.ERROR_MESSAGE);
-                }
-            }
-
-        }).start();
     } //КОНЕЦ КОНСТРУКТОРА
 
-    private void sendMessage()
-    {
-        try {
-            //Получаем необходимые параметры
-            final String senderName = textFieldFrom.getText();
-            final String destinationAddress = textFieldTo.getText();
-            final String message = textAreaOutgoing.getText();
-
-            //Убеждаемся, что пистолет заряжен,     т.e. что поля не пустые
-            if (senderName.isEmpty())
-            {
-                JOptionPane.showMessageDialog(this,
-                        "Введите имя отправителя","Ошибка", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            if (destinationAddress.isEmpty())
-            {
-                JOptionPane.showMessageDialog(this,
-                        "Введите адрес узла-получателя","Ошибка", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            if (message.isEmpty())
-            {
-                JOptionPane.showMessageDialog(this,
-                        "Введите текст сообщения","Ошибка", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            //Создаем сокет для соединения
-            final Socket socket = new Socket(destinationAddress, SERVER_PORT);
-
-            //Открываем поток вывода данных
-            final DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-
-            //Записываем в поток имя
-            out.writeUTF(senderName);
-            //Записываем в поток сообщение
-            out.writeUTF(message);
-            //Закрываем сокет
-            socket.close();
-
-            //Помещаем сообщения в текстовую область вывода
-            textAreaIncoming.append("Я -> " + destinationAddress + ": " + message + "\n");
-
-            //Очищаем текстовую область ввода сообщения
-            textAreaOutgoing.setText("");
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(MainFrame.this,
-                    "Не удалось отправить сообщение: узел-адресат не найден", "Ошибка", JOptionPane.ERROR_MESSAGE);
-        } catch (IOException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(MainFrame.this,
-                    "Не удалось отправить сообщение", "Ошибка",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
@@ -238,4 +165,9 @@ public class MainFrame extends JFrame
         });
     }
 
+    public void messageReceived(String senderName, String address, String message)
+    {
+        // Выводим сообщение в текстовую область
+        textAreaIncoming.append(senderName + " (" + address + "): " + message + "\n");
+    }
 }
