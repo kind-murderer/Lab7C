@@ -1,12 +1,12 @@
-public class Peer
+public class User
 {
     //скорее клиент в моем случае
     String name;
     String address;
-    Peer()
+    User(String name, String address)
     {
-        name = "";
-        address = "";
+        this.name = name;
+        this.address = address;
     }
 
     public String getName() {
