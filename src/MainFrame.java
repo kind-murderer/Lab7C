@@ -14,7 +14,7 @@ public class MainFrame extends JFrame
 
     //сервер порт перенесен в instantMessenger
     //экземпляр мессенджера
-    InstantMessenger myMessenger;
+    private MainMessengerReceiver myMessenger;
 
     MainFrame()
     {
@@ -24,13 +24,17 @@ public class MainFrame extends JFrame
         setLocation((kit.getScreenSize().width - getWidth())/2 , (kit.getScreenSize().height - getHeight())/2);
 
         //СОЗДАНИЕ МЕССЕНДЖЕРА
-        myMessenger = new InstantMessenger(this);
+        myMessenger = new MainMessengerReceiver(this);
 
 
         //панель с вкладками
         final JTabbedPane tabbedPane = new JTabbedPane();
 
-        DialogPanel dialog1 = new DialogPanel(myMessenger);
+        DialogPanel dialog1 = new DialogPanel();
+        DialogCommunication dialog1Communication = new DialogCommunication(dialog1, myMessenger);
+        dialog1.setMyDialogCommunication(dialog1Communication);
+        myMessenger.addMessageListener(dialog1Communication);
+
         tabbedPane.addTab("Вкладка диалога", dialog1);
 
         getContentPane().add(tabbedPane);
@@ -39,18 +43,22 @@ public class MainFrame extends JFrame
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
+        /*В главном потоке JVM запускает метод main() приложения, а также все
+        методы, которые вызываются из него, при этом главному потоку
+        автоматически присваивается имя main.*/
+
+        //SwingUtilities.invokeLater(new Runnable() {
+            //public void run() {
                 //final DialogFrame frame = new DialogFrame();
                 //frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 //frame.setVisible(true);
-                //ПОТОМ РАЗОБРАТЬСЯ КАК БУДЕМ ДЕЛАТЬ ОКОШКО ДЛЯ ДИАЛОГА
-                //блин, я, наверн оставлю здесь пока разделение действий потоками , надо будет спросить потом
+
+                //блин, я, походу не оставлю здесь разделение действий потоками , надо будет спросить потом все равно
+                //сделаю поток в конструкторе MainMessenger
                 final MainFrame frame = new MainFrame();
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 frame.setVisible(true);
-            }
-        });
+           //}
+       // });
     }
 }

@@ -1,5 +1,3 @@
-import java.awt.Dimension;
-import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -7,7 +5,6 @@ import java.net.UnknownHostException;
 import javax.swing.BorderFactory;
 import javax.swing.GroupLayout;
 import javax.swing.JButton;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -15,12 +12,8 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
-public class DialogPanel extends JPanel implements MessageListener
+public class DialogPanel extends JPanel
 {
-    private static final String FRAME_TITLE = "Диалог";
-
-    private static final int FRAME_MINIMUM_WIDTH = 500;
-    private static final int FRAME_MINIMUM_HEIGHT = 500;
 
     private static final int FROM_FIELD_DEFAULT_COLUMNS = 10;
     private static final int TO_FIELD_DEFAULT_COLUMNS = 20;
@@ -38,16 +31,12 @@ public class DialogPanel extends JPanel implements MessageListener
     private final JTextArea textAreaIncoming;
     private final JTextArea textAreaOutgoing;
 
-    //экземпляр мессенджера, передаст мэйнфрэйм, мессенджер один на все окошки
-    InstantMessenger myMessenger;
+    //dialogCommunication берет на себя сетевое взаимодействие
+    private DialogCommunication myDialogCommunication;
 
     //КОНСТРУКТОР
-    public DialogPanel(InstantMessenger myMessenger)
+    public DialogPanel()
     {
-
-       // setMinimumSize(new Dimension(FRAME_MINIMUM_WIDTH, FRAME_MINIMUM_HEIGHT));
-        //final Toolkit kit = Toolkit.getDefaultToolkit();
-       // setLocation((kit.getScreenSize().width - getWidth())/2 , (kit.getScreenSize().height - getHeight())/2);
 
         //текстовая область для отображения полученных сообщений
         textAreaIncoming = new JTextArea(INCOMING_AREA_DEFAULT_ROWS, 0);
@@ -70,11 +59,6 @@ public class DialogPanel extends JPanel implements MessageListener
         //Контейнер, обеспечивающий прокрутку текстовой области
         final JScrollPane scrollPaneOutgoing = new JScrollPane(textAreaOutgoing);
 
-
-        //СДЕЛАТЬ ЧТО-НИБУДЬ С СЕНДЕРОМ Х1 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //СОЗДАНИЕ МЕССЕНДЖЕРА
-        this.myMessenger = myMessenger;
-        myMessenger.addMessageListener(this);
 
         //Панель ввода сообщения
         final JPanel messagePanel = new JPanel();
@@ -110,7 +94,7 @@ public class DialogPanel extends JPanel implements MessageListener
                 }
                 //Передаем дело отправки мессенджеру
                 try {
-                    myMessenger.sendMessage(senderName, destinationAddress, message);
+                    myDialogCommunication.sendMessage(senderName, destinationAddress, message);
                 } catch (UnknownHostException e1) {
                     e1.printStackTrace();
                     JOptionPane.showMessageDialog(DialogPanel.this, "Не удалось отправить сообщение: узел-адресат не найден", "Ошибка",
@@ -122,7 +106,10 @@ public class DialogPanel extends JPanel implements MessageListener
                 }
 
                 //Пишем в текстовую область вывода, что отправили свое сообщение
-                textAreaIncoming.append("Я -> " + destinationAddress + ": " + message + "\n");
+                //синхронизирован, тк в это время может что-то приходить к нам и выводиться
+                synchronized (textAreaIncoming) {
+                    textAreaIncoming.append("Я -> " + destinationAddress + ": " + message + "\n");
+                }
                 //Очищаем текстовую область ввода
                 textAreaOutgoing.setText("");
             }
@@ -178,12 +165,12 @@ public class DialogPanel extends JPanel implements MessageListener
 
     } //КОНЕЦ КОНСТРУКТОРА
 
-    public void messageReceived(String senderName, String address, String message)
-    {
-        // Выводим сообщение в текстовую область
-        textAreaIncoming.append(senderName + " (" + address + "): " + message + "\n");
+    public JTextArea getTextAreaIncoming() {
+        return textAreaIncoming;
     }
 
+    public void setMyDialogCommunication(DialogCommunication myDialogCommunication) {
+        this.myDialogCommunication = myDialogCommunication;
 
-
+    }
 }
