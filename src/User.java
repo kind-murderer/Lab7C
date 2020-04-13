@@ -1,8 +1,8 @@
 public class User
 {
     //скорее клиент в моем случае
-    String name;
-    String address;
+    private String name;
+    private String address;
     User(String name, String address)
     {
         this.name = name;

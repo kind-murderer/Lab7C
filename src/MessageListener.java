@@ -1,4 +1,4 @@
 public interface MessageListener
 {
-    public void messageReceived(String senderName, String address, String message);
+    public void messageReceived(User sender,  String message);
 }

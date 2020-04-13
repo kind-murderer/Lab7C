@@ -1,7 +1,5 @@
 import javax.swing.*;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -11,19 +9,35 @@ import java.util.List;
 
 public class MainMessengerReceiver
 {
-
-    private User sender;
+    //contacts
+    DataBase dataBase;
 
     //listeners
     private List<MessageListener> dialoglisteners = new ArrayList<>();
 
     private final int SERVER_PORT = 4567;
 
-    //СДЕЛАТЬ ЧТО-НИБУДЬ С СЕНДЕРОМ Х2 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     MainMessengerReceiver(MainFrame parent) //КОНСТРУКТОР
     {
         //MainFrame тут только ради роли родителя-окна при выносе ошибок
+        try {
+            dataBase = new DataBase();
+        } catch(FileNotFoundException e1)
+        {
+            e1.printStackTrace();
+            JOptionPane.showMessageDialog(parent, "Файл не найден, невозможно прочесть контакты", "Ошибка",
+                    JOptionPane.ERROR_MESSAGE);
+            parent.dispose();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(parent, "Ошибка в чтении файла", "Ошибка",
+                    JOptionPane.ERROR_MESSAGE);
+            parent.dispose();
+        }
         startServer(parent);
+
     }
 
     private void startServer(MainFrame parent)
@@ -51,16 +65,56 @@ public class MainMessengerReceiver
                         final String address = ((InetSocketAddress)socket.getRemoteSocketAddress()).getAddress().getHostAddress();
 
                         //Уведомили слушателей
-                        notifyListeners(senderName, address, message);
+                        notifyListeners(new User(senderName, address), message);
                     }
                 } catch (IOException e)
                 {
-                    e.printStackTrace(); //
+                    e.printStackTrace();
                     JOptionPane.showMessageDialog(parent, "Ошибка в работе сервера", "Ошибка",
                             JOptionPane.ERROR_MESSAGE);
+                    parent.dispose();
                 }
             }
         }).start();
+    }
+
+    public void addUser(JFrame parent, User newbie) {
+        //проверим, не существует ли с таким именем уже (адреса одинаковые, но имена разные -ок)
+        String name = newbie.getName();
+        String address = newbie.getAddress();
+        boolean res = false;
+        if(name != null && address != null)
+        {
+            for(User contact : dataBase.getContacts()) {
+                if (contact.getName().equals(name)) {
+                    res = true;
+                    break;
+                }
+            }
+            if(!res) //если такого нет
+            {
+                dataBase.getContacts().add(newbie);
+                try {
+                    FileWriter out = new FileWriter("data.txt", true);
+                    out.write(name + System.getProperty("line.separator") + address + System.getProperty("line.separator"));
+                    out.close();
+                } catch (IOException e)
+                {
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(parent, "Файл не найден, невозможно добавить контакт", "Ошибка",
+                            JOptionPane.ERROR_MESSAGE);
+                    parent.dispose();
+                }
+            } else {
+                JOptionPane.showMessageDialog(parent, "Такой контакт уже существует", "Ошибка",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        }
+
+    }
+
+    public DataBase getDataBase() {
+        return dataBase;
     }
 
     public int getServerPort() {
@@ -71,14 +125,13 @@ public class MainMessengerReceiver
         synchronized (dialoglisteners) {
             dialoglisteners.add(listener);
         } }
-    public void removeMessageListener(MessageListener listener) {
-        synchronized (dialoglisteners) {
-            dialoglisteners.remove(listener);
-        } }
-    //КОГДА СДЕЛАЮ КЛАСС Peer ВОЗМОЖНО String sender+address можно будет убрать, тк все будет в Peer Sender!!!!!!!!!!!!!!!!!!LATER!!!!!!!!!!!
-    private void notifyListeners(String sender, String address, String message) {
+    private void notifyListeners(User sender, String message) {
         synchronized (dialoglisteners) {
             for (MessageListener listener : dialoglisteners) {
-                listener.messageReceived(sender, address, message);
+                listener.messageReceived(sender, message);
             } } }
+            /*public void removeMessageListener(MessageListener listener) {
+        synchronized (dialoglisteners) {
+            dialoglisteners.remove(listener);
+        } }*/
 }

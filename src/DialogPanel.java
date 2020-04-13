@@ -31,12 +31,17 @@ public class DialogPanel extends JPanel
     private final JTextArea textAreaIncoming;
     private final JTextArea textAreaOutgoing;
 
+    private User contact;
+
     //dialogCommunication берет на себя сетевое взаимодействие
     private DialogCommunication myDialogCommunication;
 
     //КОНСТРУКТОР
-    public DialogPanel()
+    public DialogPanel(User contact)
     {
+
+        this.contact = contact;
+        final String destinationAddress = contact.getAddress();
 
         //текстовая область для отображения полученных сообщений
         textAreaIncoming = new JTextArea(INCOMING_AREA_DEFAULT_ROWS, 0);
@@ -44,7 +49,7 @@ public class DialogPanel extends JPanel
 
         //контейнер, обеспечивающий прокрутку текстовой области
         final JScrollPane scrollPaneIncoming = new JScrollPane(textAreaIncoming);
-
+        textAreaIncoming.setText("< Вы открыли диалог >\n");
         //Подписи полей
         final JLabel labelFrom = new JLabel ("От");
         final JLabel labelTo = new JLabel ("Получатель");
@@ -52,13 +57,13 @@ public class DialogPanel extends JPanel
         //Поля ввода имени пользователя и адреса получателя
         textFieldFrom = new JTextField(FROM_FIELD_DEFAULT_COLUMNS);
         textFieldTo = new JTextField(TO_FIELD_DEFAULT_COLUMNS);
-
+        textFieldTo.setText(contact.getAddress());
+        textFieldTo.setEditable(false);
         //Текстовая область для ввода сообщения
         textAreaOutgoing = new JTextArea(OUTCOMING_AREA_DEFAULT_ROWS, 0);
 
         //Контейнер, обеспечивающий прокрутку текстовой области
         final JScrollPane scrollPaneOutgoing = new JScrollPane(textAreaOutgoing);
-
 
         //Панель ввода сообщения
         final JPanel messagePanel = new JPanel();
@@ -71,7 +76,7 @@ public class DialogPanel extends JPanel
             public void actionPerformed(ActionEvent e) {
                 //Получаем необходимые параметры
                 final String senderName = textFieldFrom.getText();
-                final String destinationAddress = textFieldTo.getText();
+                //final String destinationAddress = textFieldTo.getText();
                 final String message = textAreaOutgoing.getText();
                 //Убеждаемся, что пистолет заряжен,     т.e. что поля не пустые
                 if (senderName.isEmpty())
@@ -94,7 +99,7 @@ public class DialogPanel extends JPanel
                 }
                 //Передаем дело отправки мессенджеру
                 try {
-                    myDialogCommunication.sendMessage(senderName, destinationAddress, message);
+                    myDialogCommunication.sendMessage(senderName, contact, message);
                 } catch (UnknownHostException e1) {
                     e1.printStackTrace();
                     JOptionPane.showMessageDialog(DialogPanel.this, "Не удалось отправить сообщение: узел-адресат не найден", "Ошибка",
@@ -146,7 +151,6 @@ public class DialogPanel extends JPanel
             .addComponent(sendButton)
             .addContainerGap());
          //Компановка элементов панели
-        //ТУТ ПОТОМ ПОСМОТРЕТЬ НА ОШИБКИ, ЕСЛИ НЕ БУДЕТ РАБОТАТЬ
         final GroupLayout layout1 = new GroupLayout(this);
         setLayout(layout1);
 
@@ -167,6 +171,10 @@ public class DialogPanel extends JPanel
 
     public JTextArea getTextAreaIncoming() {
         return textAreaIncoming;
+    }
+
+    public User getContact() {
+        return contact;
     }
 
     public void setMyDialogCommunication(DialogCommunication myDialogCommunication) {
