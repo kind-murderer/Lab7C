@@ -1,241 +1,226 @@
-import java.awt.Dimension;
-import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.UnknownHostException;
-import javax.swing.BorderFactory;
-import javax.swing.GroupLayout;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
 
 public class MainFrame extends JFrame
 {
-    private static final String FRAME_TITLE = "Клиент мгновернных сообщений";
-
     private static final int FRAME_MINIMUM_WIDTH = 500;
     private static final int FRAME_MINIMUM_HEIGHT = 500;
 
-    private static final int FROM_FIELD_DEFAULT_COLUMNS = 10;
-    private static final int TO_FIELD_DEFAULT_COLUMNS = 20;
+    private static final String FRAME_TITLE = "Клиент мгновернных сообщений";
 
-    private static final int INCOMING_AREA_DEFAULT_ROWS = 10;
-    private static final int OUTCOMING_AREA_DEFAULT_ROWS = 5;
+    //панель с вкладками;
+    private static final JTabbedPane tabbedPane =  new JTabbedPane();
+    //панель с кнопками
+    private static final JPanel buttonPanel = new JPanel();
+    //кнопки
+    private static final JButton buttonAdd = new JButton("Начать новую беседу");
+    private static final JButton buttonRegister = new JButton("Зарегистрироваться");
+    private static final JButton buttonLog = new JButton("Войти");
 
-    private static final int SMALL_GAP = 5;
-    private static final int MEDIUM_GAP = 10;
-    private static final int LARGE_GAP = 15;
+    //пользователь
+    private User USER;
 
-    private static final int SERVER_PORT = 4567;
+    //сервер порт перенесен в instantMessenger
+    //экземпляр мессенджера
+    private MainMessengerReceiver myMessenger;
 
-    private final JTextField textFieldFrom;
-    private final JTextField textFieldTo;
-
-    private final JTextArea textAreaIncoming;
-    private final JTextArea textAreaOutgoing;
-
-    //КОНСТРУКТОР
-    public MainFrame()
+    MainFrame()
     {
         super(FRAME_TITLE);
         setMinimumSize(new Dimension(FRAME_MINIMUM_WIDTH, FRAME_MINIMUM_HEIGHT));
         final Toolkit kit = Toolkit.getDefaultToolkit();
         setLocation((kit.getScreenSize().width - getWidth())/2 , (kit.getScreenSize().height - getHeight())/2);
 
-        //текстовая область для отображения полученных сообщений
-        textAreaIncoming = new JTextArea(INCOMING_AREA_DEFAULT_ROWS, 0);
-        textAreaIncoming.setEditable(false);
+        //СОЗДАНИЕ МЕССЕНДЖЕРА
+        myMessenger = new MainMessengerReceiver(this);
 
-        //контейнер, обеспечивающий прокрутку текстовой области
-        final JScrollPane scrollPaneIncoming = new JScrollPane(textAreaIncoming);
-
-        //Подписи полей
-        final JLabel labelFrom = new JLabel ("От");
-        final JLabel labelTo = new JLabel ("Получатель");
-
-        //Поля ввода имени пользователя и адреса получателя
-        textFieldFrom = new JTextField(FROM_FIELD_DEFAULT_COLUMNS);
-        textFieldTo = new JTextField(TO_FIELD_DEFAULT_COLUMNS);
-
-        //Текстовая область для ввода сообщения
-        textAreaOutgoing = new JTextArea(OUTCOMING_AREA_DEFAULT_ROWS, 0);
-
-        //Контейнер, обеспечивающий прокрутку текстовой области
-        final JScrollPane scrollPaneOutgoing = new JScrollPane(textAreaOutgoing);
-
-        //Панель ввода сообщения
-        final JPanel messagePanel = new JPanel();
-        messagePanel.setBorder(
-                BorderFactory.createTitledBorder("Сообщение"));
-
-        //Кнопка отправки сообщения
-        final JButton sendButton = new JButton("Отправить");
-        sendButton.addActionListener(new ActionListener() {
+        //кнопка начать беседу
+        buttonAdd.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                sendMessage();
+                int result = JOptionPane.showConfirmDialog(
+                        MainFrame.this,
+                        "Выбрать из контактов?",
+                        "Начать новую беседу",
+                        JOptionPane.YES_NO_CANCEL_OPTION);
+
+                if(result == JOptionPane.YES_OPTION){
+                    int size = myMessenger.getDataBase().getContacts().size();
+                    String[] cont = new String[size];
+                    for(int i = 0; i < size; i++)
+                    {
+                        cont[i] = myMessenger.getDataBase().getContacts().get(i).getName();
+                    }
+                    String choiceName = (String)JOptionPane.showInputDialog(MainFrame.this,
+                            "Выберите собеседника :",
+                            "Контакты", JOptionPane.QUESTION_MESSAGE, null,
+                             cont, cont[0]);
+                    User choice = null;
+                    for(User element : myMessenger.getDataBase().getContacts()) { //ищем по имени кого выбрали
+                       if(choiceName.equals(element.getName()))
+                       {
+                           choice = element;
+                       }
+                    }
+                    if(choice == null)
+                    {
+                        System.out.println("Smth went wrong");
+                    } else {
+                        newChat(MainFrame.tabbedPane, choice);
+                    }
+                }
+                if(result == JOptionPane.NO_OPTION){
+                    MiniFrame miniFrame = new MiniFrame("Имя пользователя: ", "Адрес: ", "Новый контакт", 1);
+                    //экземпляр внутреннего класса miniFrame
+                    }
             }
         });
 
-        //Компоновка элементов панели "Сообщение"
-        final GroupLayout layout2 = new GroupLayout(messagePanel);
-        messagePanel.setLayout(layout2);
-
-        layout2.setHorizontalGroup(layout2.createSequentialGroup()
-                        .addContainerGap()
-                        .addGroup(layout2.createParallelGroup(GroupLayout.Alignment.TRAILING)
-                                .addGroup(layout2.createSequentialGroup()
-                                        .addComponent(labelFrom)
-                                        .addGap(SMALL_GAP)
-                                        .addComponent(textFieldFrom)
-                                        .addGap(LARGE_GAP)
-                                        .addComponent(labelTo)
-                                        .addGap(SMALL_GAP)
-                                        .addComponent(textFieldTo))
-                                .addComponent(scrollPaneOutgoing)
-                                .addComponent(sendButton))
-                .addContainerGap());
-        layout2.setVerticalGroup(layout2.createSequentialGroup()
-                        .addContainerGap()
-            .addGroup(layout2.createParallelGroup(GroupLayout.Alignment.BASELINE)
-                    .addComponent(labelFrom)
-                    .addComponent(textFieldFrom)
-                    .addComponent(labelTo)
-                    .addComponent(textFieldTo))
-            .addGap(MEDIUM_GAP)
-            .addComponent(scrollPaneOutgoing)
-            .addGap(MEDIUM_GAP)
-            .addComponent(sendButton)
-            .addContainerGap());
-         //Компановка элементов фрейма
-        final GroupLayout layout1 = new GroupLayout(getContentPane());
-        setLayout(layout1);
-
-        layout1.setHorizontalGroup(layout1.createSequentialGroup()
-                        .addContainerGap()
-                        .addGroup( layout1.createParallelGroup()
-                                .addComponent(scrollPaneIncoming)
-                                .addComponent(messagePanel))
-                        .addContainerGap());
-        layout1.setVerticalGroup(layout1.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(scrollPaneIncoming)
-                .addGap(MEDIUM_GAP)
-                .addComponent(messagePanel)
-                .addContainerGap());
-
-        //Создание и запуск потока-отработчика запросов
-        new Thread(new Runnable(){
-            public void run ()
-            {
-                try{
-                    final ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
-
-                    while(!Thread.interrupted())
-                    {
-                        final Socket socket = serverSocket.accept();
-                        final DataInputStream in = new DataInputStream(socket.getInputStream());
-                        //Читаем имя отправителя
-                        final String senderName = in.readUTF();
-                        //Читаем сообщение
-                        final String message = in.readUTF();
-                        //Закрываем соединение
-                        socket.close();
-                        //Выделяем IP-адрес
-                        final String address = ((InetSocketAddress) socket.getRemoteSocketAddress()).getAddress().getHostAddress();
-                        //Выводим сообщение в текстовую область
-                        textAreaIncoming.append(senderName + " (" + address + ") " + message + "\n");
-
-                    }
-                } catch (IOException e)
-                {
-                    e.printStackTrace();
-                    JOptionPane.showMessageDialog(MainFrame.this, "Ошибка в работе сервера", "Ошибка",
-                            JOptionPane.ERROR_MESSAGE);
-                }
+        //Кнопка зарегистрироваться
+        buttonRegister.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                MiniFrame miniFrame = new MiniFrame("Имя пользователя: ", "Пароль: ", "Новый пользователь", 2);
             }
+        });
+        //Кнопка войти
+        buttonLog.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                MiniFrame miniFrame = new MiniFrame("Имя пользователя: ", "Пароль: ", "Войти", 3);
+            }
+        });
+        buttonPanel.add(buttonLog);
+        buttonPanel.add(buttonRegister);
 
-        }).start();
-    } //КОНЕЦ КОНСТРУКТОРА
 
-    private void sendMessage()
+        getContentPane().add(buttonPanel, BorderLayout.NORTH);
+        getContentPane().add(tabbedPane);
+
+    }
+
+    private void newChat(JTabbedPane tabbedPane, User contact)
     {
-        try {
-            //Получаем необходимые параметры
-            final String senderName = textFieldFrom.getText();
-            final String destinationAddress = textFieldTo.getText();
-            final String message = textAreaOutgoing.getText();
+        DialogPanel dialog1 = new DialogPanel(contact, USER);
+        DialogCommunication dialog1Communication = new DialogCommunication(dialog1, myMessenger);
+        dialog1.setMyDialogCommunication(dialog1Communication);
+        myMessenger.addMessageListener(dialog1Communication);
+        tabbedPane.addTab(contact.getName(), dialog1);
+    }
 
-            //Убеждаемся, что пистолет заряжен,     т.e. что поля не пустые
-            if (senderName.isEmpty())
-            {
-                JOptionPane.showMessageDialog(this,
-                        "Введите имя отправителя","Ошибка", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            if (destinationAddress.isEmpty())
-            {
-                JOptionPane.showMessageDialog(this,
-                        "Введите адрес узла-получателя","Ошибка", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            if (message.isEmpty())
-            {
-                JOptionPane.showMessageDialog(this,
-                        "Введите текст сообщения","Ошибка", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
+    //внутренний класс miniFrame
+    private class MiniFrame extends JFrame
+    {
+        private String[] text = new String[2];
+        private MiniFrame(String label1text, String label2text, String tittle, int purpose) //конструктор
+        {
+            super(tittle);
+            Box hboxForLabel1 = Box.createHorizontalBox();
+            JLabel label1 = new JLabel(label1text);
+            hboxForLabel1.add(label1);
 
-            //Создаем сокет для соединения
-            final Socket socket = new Socket(destinationAddress, SERVER_PORT);
+            Box hboxForField1 = Box.createHorizontalBox();
+            JTextField textField1 = new JTextField();
+            int prefHeight = textField1.getPreferredSize().height;
+            textField1.setMaximumSize(new Dimension(Integer.MAX_VALUE, prefHeight));
+            hboxForField1.add(textField1);
 
-            //Открываем поток вывода данных
-            final DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+            Box hboxForLabel2 = Box.createHorizontalBox();
+            JLabel label2 = new JLabel(label2text);
+            hboxForLabel2.add(label2);
 
-            //Записываем в поток имя
-            out.writeUTF(senderName);
-            //Записываем в поток сообщение
-            out.writeUTF(message);
-            //Закрываем сокет
-            socket.close();
+            Box hboxForField2 = Box.createHorizontalBox();
+            JTextField textField2 = new JTextField();
+            prefHeight = textField2.getPreferredSize().height;
+            textField2.setMaximumSize(new Dimension(Integer.MAX_VALUE, prefHeight));
+            hboxForField2.add(textField2);
 
-            //Помещаем сообщения в текстовую область вывода
-            textAreaIncoming.append("Я -> " + destinationAddress + ": " + message + "\n");
+            Box hboxForButton = Box.createHorizontalBox();
+            JButton buttonOK = new JButton("OK");
+            buttonOK.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e) {
+                    //purpose == 1 for new contact
+                    //purpose == 2 for registration
+                    //purpose == 3 for log in
+                    text[0] = textField1.getText();
+                    text[1] = textField2.getText();
+                    if(purpose == 1)
+                    {
+                        User newbie = new User(text[0], text[1]);
+                        myMessenger.addContact(MainFrame.this, newbie);
+                        newChat(MainFrame.tabbedPane, newbie);
+                    }
+                    else if(purpose == 2)
+                    {
+                        User newbie = new User(text[0], text[1]);
+                        boolean weLoggedIn = myMessenger.addLogin(MainFrame.this, newbie);
+                        if(weLoggedIn){
+                            MainFrame.buttonPanel.remove(buttonRegister);
+                            MainFrame.buttonPanel.remove(buttonLog);
+                            MainFrame.buttonPanel.add(buttonAdd);
+                            MainFrame.buttonPanel.revalidate();
+                            MainFrame.buttonPanel.repaint();
+                            USER = newbie;
+                        }
+                    }
+                    else if(purpose == 3)
+                    {
+                        User log = new User(text[0], text[1]);
+                        boolean properLog = myMessenger.checkLog(MainFrame.this, log);
+                        if(properLog)
+                        {
+                            MainFrame.buttonPanel.remove(buttonRegister);
+                            MainFrame.buttonPanel.remove(buttonLog);
+                            MainFrame.buttonPanel.add(buttonAdd);
+                            MainFrame.buttonPanel.revalidate();
+                            MainFrame.buttonPanel.repaint();
+                            USER = log;
+                        }
+                    }
+                    MiniFrame.this.dispose();
+                }
+            });
+            hboxForButton.add(buttonOK);
 
-            //Очищаем текстовую область ввода сообщения
-            textAreaOutgoing.setText("");
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(MainFrame.this,
-                    "Не удалось отправить сообщение: узел-адресат не найден", "Ошибка", JOptionPane.ERROR_MESSAGE);
-        } catch (IOException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(MainFrame.this,
-                    "Не удалось отправить сообщение", "Ошибка",
-                    JOptionPane.ERROR_MESSAGE);
-        }
+            Box contentBox = Box.createVerticalBox();
+            contentBox.add(Box.createVerticalGlue());
+            contentBox.add(hboxForLabel1);
+            contentBox.add(Box.createVerticalStrut(10));
+            contentBox.add(hboxForField1);
+            contentBox.add(Box.createVerticalStrut(20));
+            contentBox.add(Box.createVerticalGlue());
+            contentBox.add(hboxForLabel2);
+            contentBox.add(Box.createVerticalStrut(10));
+            contentBox.add(hboxForField2);
+            contentBox.add(Box.createVerticalStrut(20));
+            contentBox.add(Box.createVerticalGlue());
+            contentBox.add(hboxForButton);
+            contentBox.add(Box.createVerticalGlue());
+
+            getContentPane().add(contentBox);
+
+            setMinimumSize(new Dimension(300, 250));
+            final Toolkit kit = Toolkit.getDefaultToolkit();
+            setLocation((kit.getScreenSize().width - getWidth())/2 , (kit.getScreenSize().height - getHeight())/2);
+            setVisible(true);
+        }//конец конструктора
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
+        /*В главном потоке JVM запускает метод main() приложения, а также все
+        методы, которые вызываются из него, при этом главному потоку
+        автоматически присваивается имя main.*/
+
+        //SwingUtilities.invokeLater(new Runnable() {
+            //public void run() {
+                //final DialogFrame frame = new DialogFrame();
+                //frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                //frame.setVisible(true);
+
+                //блин, я, походу не оставлю здесь разделение действий потоками , надо будет спросить потом все равно
+                //сделаю поток в конструкторе MainMessenger
                 final MainFrame frame = new MainFrame();
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 frame.setVisible(true);
-            }
-        });
+           //}
+       // });
     }
-
 }
