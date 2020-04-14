@@ -1,4 +1,3 @@
-import javax.swing.*;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -6,12 +5,14 @@ import java.util.List;
 public class DataBase
 {
     private List<User> contacts = new ArrayList<>();
+    private List<User> logins = new ArrayList<>();
 
     DataBase() throws IOException {
-        readData();
+        readContacts();
+        readLogins();
     }
 
-    private void readData() throws FileNotFoundException, IOException {
+    private void readContacts() throws FileNotFoundException, IOException {
         File file = new File("data.txt");
         BufferedReader reader = new BufferedReader(new FileReader(file));
         String line = null;
@@ -27,10 +28,27 @@ public class DataBase
         contacts.add(new User("Сохраненки","127.0.0.1"));
     }
 
+    private void readLogins() throws FileNotFoundException, IOException {
+        File file = new File("logins.txt");
+        BufferedReader reader = new BufferedReader(new FileReader(file));
+        String line = null;
+        while ((line = reader.readLine()) != null)
+        {
+            String name = line;
+            line = reader.readLine();
+            String password = line;
+            logins.add(new User(name, password));
+        }
+        reader.close();
+    }
+
     public List<User> getContacts() {
         return contacts;
     }
 
+    public List<User> getLogins() {
+        return logins;
+    }
     /*private void writeData()
     {
         String name;

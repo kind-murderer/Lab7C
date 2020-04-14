@@ -2,26 +2,21 @@ public class User
 {
     //скорее клиент в моем случае
     private String name;
-    private String address;
-    User(String name, String address)
+    private String addressOrPassword; //address or password, буду использовать это в зависимости от ситуации
+    User(String name, String addressOrPassword)
     {
         this.name = name;
-        this.address = address;
+        this.addressOrPassword = addressOrPassword;
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
     public String getAddress() {
-        return address;
+        return addressOrPassword;
     }
-
-    public void setAddress(String address) {
-        this.address = address;
+    public String getPassword(){
+        return addressOrPassword;
     }
 }

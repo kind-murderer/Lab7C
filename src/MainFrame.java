@@ -1,7 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.ArrayList;
 
 public class MainFrame extends JFrame
 {
@@ -11,7 +10,16 @@ public class MainFrame extends JFrame
     private static final String FRAME_TITLE = "Клиент мгновернных сообщений";
 
     //панель с вкладками;
-     private static final JTabbedPane tabbedPane =  new JTabbedPane();
+    private static final JTabbedPane tabbedPane =  new JTabbedPane();
+    //панель с кнопками
+    private static final JPanel buttonPanel = new JPanel();
+    //кнопки
+    private static final JButton buttonAdd = new JButton("Начать новую беседу");
+    private static final JButton buttonRegister = new JButton("Зарегистрироваться");
+    private static final JButton buttonLog = new JButton("Войти");
+
+    //пользователь
+    private User USER;
 
     //сервер порт перенесен в instantMessenger
     //экземпляр мессенджера
@@ -27,9 +35,7 @@ public class MainFrame extends JFrame
         //СОЗДАНИЕ МЕССЕНДЖЕРА
         myMessenger = new MainMessengerReceiver(this);
 
-        //панель с кнопками
-        JPanel buttonPanel = new JPanel();
-        JButton buttonAdd = new JButton("Начать новую беседу");
+        //кнопка начать беседу
         buttonAdd.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 int result = JOptionPane.showConfirmDialog(
@@ -63,14 +69,28 @@ public class MainFrame extends JFrame
                         newChat(MainFrame.tabbedPane, choice);
                     }
                 }
-
                 if(result == JOptionPane.NO_OPTION){
                     MiniFrame miniFrame = new MiniFrame("Имя пользователя: ", "Адрес: ", "Новый контакт", 1);
                     //экземпляр внутреннего класса miniFrame
                     }
             }
         });
-        buttonPanel.add(buttonAdd);
+
+        //Кнопка зарегистрироваться
+        buttonRegister.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                MiniFrame miniFrame = new MiniFrame("Имя пользователя: ", "Пароль: ", "Новый пользователь", 2);
+            }
+        });
+        //Кнопка войти
+        buttonLog.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                MiniFrame miniFrame = new MiniFrame("Имя пользователя: ", "Пароль: ", "Войти", 3);
+            }
+        });
+        buttonPanel.add(buttonLog);
+        buttonPanel.add(buttonRegister);
+
 
         getContentPane().add(buttonPanel, BorderLayout.NORTH);
         getContentPane().add(tabbedPane);
@@ -79,7 +99,7 @@ public class MainFrame extends JFrame
 
     private void newChat(JTabbedPane tabbedPane, User contact)
     {
-        DialogPanel dialog1 = new DialogPanel(contact);
+        DialogPanel dialog1 = new DialogPanel(contact, USER);
         DialogCommunication dialog1Communication = new DialogCommunication(dialog1, myMessenger);
         dialog1.setMyDialogCommunication(dialog1Communication);
         myMessenger.addMessageListener(dialog1Communication);
@@ -125,8 +145,35 @@ public class MainFrame extends JFrame
                     if(purpose == 1)
                     {
                         User newbie = new User(text[0], text[1]);
-                        myMessenger.addUser(MainFrame.this, newbie);
+                        myMessenger.addContact(MainFrame.this, newbie);
                         newChat(MainFrame.tabbedPane, newbie);
+                    }
+                    else if(purpose == 2)
+                    {
+                        User newbie = new User(text[0], text[1]);
+                        boolean weLoggedIn = myMessenger.addLogin(MainFrame.this, newbie);
+                        if(weLoggedIn){
+                            MainFrame.buttonPanel.remove(buttonRegister);
+                            MainFrame.buttonPanel.remove(buttonLog);
+                            MainFrame.buttonPanel.add(buttonAdd);
+                            MainFrame.buttonPanel.revalidate();
+                            MainFrame.buttonPanel.repaint();
+                            USER = newbie;
+                        }
+                    }
+                    else if(purpose == 3)
+                    {
+                        User log = new User(text[0], text[1]);
+                        boolean properLog = myMessenger.checkLog(MainFrame.this, log);
+                        if(properLog)
+                        {
+                            MainFrame.buttonPanel.remove(buttonRegister);
+                            MainFrame.buttonPanel.remove(buttonLog);
+                            MainFrame.buttonPanel.add(buttonAdd);
+                            MainFrame.buttonPanel.revalidate();
+                            MainFrame.buttonPanel.repaint();
+                            USER = log;
+                        }
                     }
                     MiniFrame.this.dispose();
                 }

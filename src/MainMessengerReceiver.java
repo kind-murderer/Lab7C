@@ -25,7 +25,7 @@ public class MainMessengerReceiver
         } catch(FileNotFoundException e1)
         {
             e1.printStackTrace();
-            JOptionPane.showMessageDialog(parent, "Файл не найден, невозможно прочесть контакты", "Ошибка",
+            JOptionPane.showMessageDialog(parent, "Файл не найден", "Ошибка",
                     JOptionPane.ERROR_MESSAGE);
             parent.dispose();
         }
@@ -78,7 +78,58 @@ public class MainMessengerReceiver
         }).start();
     }
 
-    public void addUser(JFrame parent, User newbie) {
+    public boolean checkLog(JFrame parent, User login)
+    {
+        String name = login.getName(); //у нас нет пользователей с одинковыми именами, так что
+        String password = login.getPassword();
+        for(User logs : dataBase.getLogins()) {
+            if (logs.getName().equals(name)) {
+                if(logs.getPassword().equals(password)) return true;
+                break;
+            }
+        }
+        JOptionPane.showMessageDialog(parent, "Проверьте введенные данные", "Ошибка",
+                JOptionPane.ERROR_MESSAGE);
+        return false;
+    }
+    public boolean addLogin(JFrame parent, User newbie) //вернет false, если не смог зарегистрироваться
+    {
+        //проверим, не существует ли с таким именем уже (пароли одинаковые, но имена разные -ок)
+        String name = newbie.getName();
+        String password = newbie.getPassword();
+        boolean res = false;
+        if(name != null && password != null)
+        {
+            for(User log : dataBase.getLogins()) {
+                if (log.getName().equals(name)) {
+                    res = true;
+                    break;
+                }
+            }
+            if(!res) //если такого нет
+            {
+                dataBase.getLogins().add(newbie);
+                try {
+                    FileWriter out = new FileWriter("logins.txt", true);
+                    out.write(name + System.getProperty("line.separator") + password + System.getProperty("line.separator"));
+                    out.close();
+                } catch (IOException e)
+                {
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(parent, "Файл не найден, невозможно добавить пользователя", "Ошибка",
+                            JOptionPane.ERROR_MESSAGE);
+                    //parent.dispose();
+                    return false;
+                }
+            } else {
+                JOptionPane.showMessageDialog(parent, "Пользователь с таким именем уже существует", "Ошибка",
+                        JOptionPane.ERROR_MESSAGE);
+                return false;
+            }
+        }
+        return true;
+    }
+    public void addContact(JFrame parent, User newbie) {
         //проверим, не существует ли с таким именем уже (адреса одинаковые, но имена разные -ок)
         String name = newbie.getName();
         String address = newbie.getAddress();
@@ -110,7 +161,6 @@ public class MainMessengerReceiver
                         JOptionPane.ERROR_MESSAGE);
             }
         }
-
     }
 
     public DataBase getDataBase() {

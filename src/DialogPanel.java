@@ -37,7 +37,7 @@ public class DialogPanel extends JPanel
     private DialogCommunication myDialogCommunication;
 
     //КОНСТРУКТОР
-    public DialogPanel(User contact)
+    public DialogPanel(User contact, User USER)
     {
 
         this.contact = contact;
@@ -56,6 +56,8 @@ public class DialogPanel extends JPanel
 
         //Поля ввода имени пользователя и адреса получателя
         textFieldFrom = new JTextField(FROM_FIELD_DEFAULT_COLUMNS);
+        textFieldFrom.setText(USER.getName());
+        textFieldFrom.setEditable(false);
         textFieldTo = new JTextField(TO_FIELD_DEFAULT_COLUMNS);
         textFieldTo.setText(contact.getAddress());
         textFieldTo.setEditable(false);
